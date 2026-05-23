@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏥 Advanced AI Disease Prediction System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #1F4788;
+            --secondary-color: #0984e3;
+            --success-color: #27ae60;
+            --warning-color: #f39c12;
+            --danger-color: #e74c3c;
+            --light-bg: #ecf0f1;
+            --dark-text: #2c3e50;
+            --accent: #3498db;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            min-height: 100vh;
+            color: var(--dark-text);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* ========== HEADER ========== */
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px 0;
+            border-bottom: 3px solid var(--primary-color);
+            margin-bottom: 40px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .header-status {
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            background: var(--light-bg);
+            border-radius: 20px;
+        }
+
+        .status-badge.active {
+            color: var(--success-color);
+        }
+
+        .status-badge.inactive {
+            color: var(--danger-color);
+        }
+
+        /* ========== MAIN CONTENT ========== */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            color: var(--primary-color);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* ========== SYMPTOM SELECTION ========== */
+        .symptoms-section {
+            grid-column: 1 / -1;
+        }
+
+        .symptom-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .symptom-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: var(--light-bg);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .symptom-checkbox:hover {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .symptom-checkbox input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+
+        .symptom-checkbox input[type="checkbox"]:checked + label {
+            font-weight: bold;
+        }
+
+        /* ========== SEARCH & FILTER ========== */
+        .search-bar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .search-bar input {
+            flex: 1;
+            padding: 12px 15px;
+            border: 2px solid var(--light-bg);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .search-bar input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* ========== BUTTONS ========== */
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 5px 15px rgba(31, 71, 136, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: var(--light-bg);
+            color: var(--dark-text);
+            border: 2px solid var(--primary-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            opacity: 0.9;
+        }
+
+        /* ========== INFO BOXES ========== */
+        .info-box {
+            background: var(--light-bg);
+            border-left: 4px solid var(--accent);
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+            font-size: 13px;
+        }
+
+        .info-box.warning {
+            background: #fff3cd;
+            border-left-color: var(--warning-color);
+            color: #856404;
+        }
+
+        .info-box.danger {
+            background: #f8d7da;
+            border-left-color: var(--danger-color);
+            color: #721c24;
+        }
+
+        .info-box.success {
+            background: #d4edda;
+            border-left-color: var(--success-color);
+            color: #155724;
+        }
+
+        /* ========== SELECTED SYMPTOMS DISPLAY ========== */
+        .selected-symptoms {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .symptom-tag {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--accent);
+            color: white;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+
+        .symptom-tag button {
+            background: none;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* ========== MODEL COMPARISON ========== */
+        .model-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .metric-box {
+            background: var(--light-bg);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+
+        /* ========== RESULTS DISPLAY ========== */
+        .results-container {
+            margin-top: 30px;
+        }
+
+        .prediction-result {
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+
+        .prediction-result h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .confidence-bar {
+            background: rgba(255, 255, 255, 0.2);
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .confidence-fill {
+            background: white;
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        /* ========== MEDICINES SECTION ========== */
+        .medicines-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 15px;
+        }
+
+        .medicine-list {
+            background: var(--light-bg);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .medicine-list h4 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .medicine-item {
+            background: white;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            border-left: 3px solid var(--accent);
+            font-size: 13px;
+        }
+
+        .medicine-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            margin-top: 5px;
+            background: var(--warning-color);
+            color: white;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .medicine-badge.rx {
+            background: var(--danger-color);
+        }
+
+        /* ========== AI INSIGHTS ========== */
+        .ai-insights {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .ai-insights h2 {
+            color: white;
+        }
+
+        .insight-section {
+            margin-top: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .insight-section:last-child {
+            border-bottom: none;
+        }
+
+        .insight-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .insight-content {
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .precaution-list, .diet-list {
+            margin-top: 8px;
+            margin-left: 15px;
+        }
+
+        .precaution-list li, .diet-list li {
+            margin-bottom: 5px;
+        }
+
+        /* ========== ALERTS ========== */
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert.critical {
+            background: #ffe6e6;
+            border-left: 4px solid var(--danger-color);
+            color: #721c24;
+        }
+
+        .alert.warning {
+            background: #fff3cd;
+            border-left: 4px solid var(--warning-color);
+            color: #856404;
+        }
+
+        .alert.info {
+            background: #d1ecf1;
+            border-left: 4px solid #0c5460;
+            color: #0c5460;
+        }
+
+        /* ========== FEEDBACK SECTION ========== */
+        .feedback-section {
+            grid-column: 1 / -1;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        .feedback-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: var(--primary-color);
+            font-size: 13px;
+        }
+
+        .form-group input, .form-group select {
+            padding: 10px;
+            border: 2px solid var(--light-bg);
+            border-radius: 5px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* ========== MEDICAL DISCLAIMER ========== */
+        .medical-disclaimer {
+            grid-column: 1 / -1;
+            background: #ffe6e6;
+            border-left: 4px solid var(--danger-color);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #721c24;
+            margin-top: 20px;
+        }
+
+        /* ========== LOADING & SUCCESS STATES ========== */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            padding: 30px;
+            color: var(--primary-color);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid var(--light-bg);
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        /* ========== FOOTER ========== */
+        footer {
+            background: var(--primary-color);
+            color: white;
+            text-align: center;
+            padding: 20px;
+            margin-top: 50px;
+            font-size: 12px;
+        }
+
+        /* ========== RESPONSIVE ========== */
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .symptoms-section {
+                grid-column: 1;
+            }
+
+            .symptom-selector {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+
+            .medicines-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header-content {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .header-status {
+                flex-direction: column;
+                width: 100%;
+            }
+        }
+
+        /* ========== ANIMATIONS ========== */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card, .prediction-result {
+            animation: slideIn 0.5s ease;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                🏥 AI Disease Prediction
+            </div>
+            <div class="header-status">
+                <div class="status-badge active">
+                    ✓ ML Models
+                </div>
+                <div class="status-badge active">
+                    ✓ AI Integration
+                </div>
+                <div class="status-badge active">
+                    ✓ Learning Engine
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- ========== SYMPTOM SELECTION ========== -->
+        <div class="card symptoms-section">
+            <h2>🔍 Select Your Symptoms</h2>
+            
+            <div class="search-bar">
+                <input type="text" id="symptomSearch" placeholder="Search symptoms...">
+            </div>
+
+            <form id="predictionForm">
+                <div class="symptom-selector" id="symptomSelector">
+                    <!-- Dynamically populated -->
+                </div>
+                
+                <div class="selected-symptoms" id="selectedSymptoms">
+                    <!-- Selected symptoms displayed here -->
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn-primary">🚀 Predict Disease</button>
+                    <button type="reset" class="btn-secondary">🔄 Clear All</button>
+                </div>
+            </form>
+
+            <div class="info-box">
+                ℹ️ <strong>How it works:</strong> Select 1-5 symptoms that best describe your condition. Our AI system will analyze them using 5 machine learning models and provide predictions with confidence scores.
+            </div>
+        </div>
+
+        <!-- ========== MODEL INFORMATION ========== -->
+        <div class="card">
+            <h2>🤖 ML Models Used</h2>
+            <div class="model-metrics">
+                <div class="metric-box">
+                    <div class="metric-value">5</div>
+                    <div class="metric-label">Algorithms</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-value">92%</div>
+                    <div class="metric-label">Avg Accuracy</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-value">100+</div>
+                    <div class="metric-label">Diseases</div>
+                </div>
+                <div class="metric-box">
+                    <div class="metric-value">50+</div>
+                    <div class="metric-label">Symptoms</div>
+                </div>
+            </div>
+
+            <div class="info-box" style="margin-top: 20px; font-size: 12px;">
+                <strong>Models:</strong>
+                <ul style="margin-left: 20px; margin-top: 8px;">
+                    <li>✓ Naive Bayes (Fast, probabilistic)</li>
+                    <li>✓ Random Forest (Ensemble voting)</li>
+                    <li>✓ Gradient Boosting (Iterative learning)</li>
+                    <li>✓ Support Vector Machine (Optimal boundaries)</li>
+                    <li>✓ Logistic Regression (Statistical model)</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- ========== RESULTS SECTION (Hidden initially) ========== -->
+        <div class="results-container" id="resultsContainer" style="display: none;">
+            <!-- Results dynamically populated here -->
+        </div>
+
+        <!-- ========== FEEDBACK SECTION ========== -->
+        <div class="card feedback-section">
+            <h2>📝 Help Us Improve</h2>
+            <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+                Your feedback helps our system learn and improve accuracy. Tell us if our prediction was correct!
+            </p>
+            
+            <div class="feedback-form">
+                <div class="form-group">
+                    <label>Actual Disease (if different)</label>
+                    <input type="text" id="actualDisease" placeholder="e.g., Diabetes">
+                </div>
+                <div class="form-group">
+                    <label>Rating</label>
+                    <select id="rating">
+                        <option value="5">⭐⭐⭐⭐⭐ Excellent</option>
+                        <option value="4">⭐⭐⭐⭐ Good</option>
+                        <option value="3">⭐⭐⭐ Average</option>
+                        <option value="2">⭐⭐ Poor</option>
+                        <option value="1">⭐ Very Poor</option>
+                    </select>
+                </div>
+                <button type="button" class="btn-primary" onclick="submitFeedback()">Submit Feedback</button>
+            </div>
+        </div>
+
+        <!-- ========== MEDICAL DISCLAIMER ========== -->
+        <div class="medical-disclaimer">
+            ⚠️ <strong>MEDICAL DISCLAIMER:</strong> This system is for informational purposes only and NOT a replacement for professional medical advice. Always consult a qualified healthcare provider before making any health decisions. In case of emergencies, call 911 or your local emergency number immediately.
+        </div>
+
+        <footer>
+            <p>🏥 Advanced AI Disease Prediction System | Medical-Grade Reliability | Powered by Machine Learning</p>
+            <p>© 2026 All Rights Reserved | For Educational & Hospital Use</p>
+        </footer>
+    </div>
+
+    <script>
+        // Load symptoms on page load
+        document.addEventListener('DOMContentLoaded', loadSymptoms);
+        document.getElementById('predictionForm').addEventListener('submit', handlePrediction);
+        document.getElementById('symptomSearch').addEventListener('input', filterSymptoms);
+
+        let allSymptoms = [];
+        let selectedSymptoms = [];
+
+        async function loadSymptoms() {
+            try {
+                const response = await fetch('/api/get-all-data');
+                const data = await response.json();
+                allSymptoms = data.symptoms;
+                renderSymptoms(allSymptoms);
+            } catch (error) {
+                console.error('Error loading symptoms:', error);
+            }
+        }
+
+        function renderSymptoms(symptoms) {
+            const selector = document.getElementById('symptomSelector');
+            selector.innerHTML = '';
+            
+            symptoms.forEach(symptom => {
+                const label = document.createElement('label');
+                label.className = 'symptom-checkbox';
+                label.innerHTML = `
+                    <input type="checkbox" name="symptom" value="${symptom.id}">
+                    <span>${symptom.name}</span>
+                `;
+                label.querySelector('input').addEventListener('change', updateSelectedSymptoms);
+                selector.appendChild(label);
+            });
+        }
+
+        function filterSymptoms() {
+            const searchTerm = document.getElementById('symptomSearch').value.toLowerCase();
+            const filtered = allSymptoms.filter(s => s.name.toLowerCase().includes(searchTerm));
+            renderSymptoms(filtered);
+        }
+
+        function updateSelectedSymptoms() {
+            selectedSymptoms = Array.from(document.querySelectorAll('input[name="symptom"]:checked'))
+                .map(input => ({
+                    id: input.value,
+                    name: input.nextElementSibling.textContent
+                }));
+            
+            displaySelectedSymptoms();
+        }
+
+        function displaySelectedSymptoms() {
+            const container = document.getElementById('selectedSymptoms');
+            container.innerHTML = '';
+            
+            selectedSymptoms.forEach(symptom => {
+                const tag = document.createElement('div');
+                tag.className = 'symptom-tag';
+                tag.innerHTML = `
+                    ${symptom.name}
+                    <button type="button" onclick="removeSymptom('${symptom.id}')">✕</button>
+                `;
+                container.appendChild(tag);
+            });
+        }
+
+        function removeSymptom(id) {
+            document.querySelector(`input[value="${id}"]`).checked = false;
+            updateSelectedSymptoms();
+        }
+
+        async function handlePrediction(e) {
+            e.preventDefault();
+            
+            if (selectedSymptoms.length === 0) {
+                alert('Please select at least one symptom');
+                return;
+            }
+
+            const formData = new FormData();
+            selectedSymptoms.forEach(symptom => {
+                formData.append('symptom', symptom.id);
+            });
+
+            try {
+                const resultsContainer = document.getElementById('resultsContainer');
+                resultsContainer.innerHTML = '<div class="loading"><div class="spinner"></div> Analyzing symptoms...</div>';
+                resultsContainer.style.display = 'block';
+
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                displayResults(result);
+            } catch (error) {
+                console.error('Prediction error:', error);
+                alert('Error making prediction. Please try again.');
+            }
+        }
+
+        function displayResults(result) {
+            const container = document.getElementById('resultsContainer');
+            
+            if (result.status !== 'success') {
+                container.innerHTML = `<div class="error-message">No matching diseases found. Please select different symptoms.</div>`;
+                return;
+            }
+
+            const topPred = result.top_prediction;
+            const alert = topPred.is_critical || result.alert ? 
+                `<div class="alert critical">🚨 ${result.alert || 'Immediate medical attention recommended'}</div>` : 
+                '';
+
+            const mlModels = result.ml_models.individual_predictions.map(m => `
+                <div class="metric-box">
+                    <div style="font-weight: bold; color: var(--primary-color); margin-bottom: 8px;">${m.name}</div>
+                    <div style="font-size: 14px;">
+                        <strong>${m.predicted_disease}</strong><br>
+                        Confidence: ${m.confidence}%<br>
+                        Accuracy: ${m.accuracy.toFixed(1)}%
+                    </div>
+                </div>
+            `).join('');
+
+            const medicines = result.medicines.all.map(m => `
+                <div class="medicine-item">
+                    <strong>${m.name}</strong><br>
+                    <small>${m.warning}</small>
+                    ${m.requires_prescription ? '<span class="medicine-badge rx">Rx Required</span>' : '<span class="medicine-badge">OTC</span>'}
+                </div>
+            `).join('');
+
+            container.innerHTML = `
+                ${alert}
+                
+                <div class="card">
+                    <h2>🎯 Prediction Result</h2>
+                    <div class="prediction-result">
+                        <h3>${topPred.disease}</h3>
+                        <div>Confidence: ${topPred.confidence}%</div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${topPred.confidence}%"></div>
+                        </div>
+                        <div>Severity: ${topPred.severity}</div>
+                        <div>Health Score: ${topPred.health_score}/100</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>🤖 Model Consensus</h2>
+                    <div class="info-box">
+                        <strong>${result.ml_models.consensus.disease}</strong> - Predicted by ${result.ml_models.consensus.votes}/${result.ml_models.consensus.total_models} models
+                    </div>
+                    <div class="model-metrics">
+                        ${mlModels}
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>💊 Recommended Medicines</h2>
+                    <div class="medicines-grid">
+                        <div class="medicine-list">
+                            <h4>🟢 Over-the-Counter (OTC)</h4>
+                            ${result.medicines.otc.length > 0 ? result.medicines.otc.map(m => `
+                                <div class="medicine-item">
+                                    <strong>${m.name}</strong><br>
+                                    <small>${m.warning}</small><br>
+                                    <span class="medicine-badge">${m.label || 'OTC'}</span>
+                                    <small>${m.prescription_note || 'Use as directed.'}</small>
+                                </div>
+                            `).join('') : '<small>No OTC medicines available</small>'}
+                        </div>
+                        <div class="medicine-list">
+                            <h4>🔴 Prescription Required</h4>
+                            ${result.medicines.prescription.length > 0 ? result.medicines.prescription.map(m => `
+                                <div class="medicine-item">
+                                    <strong>${m.name}</strong><br>
+                                    <small>${m.warning}</small><br>
+                                    <span class="medicine-badge rx">${m.label || 'Rx Required'}</span>
+                                    <small>${m.prescription_note || 'Prescription required. Use only with doctor approval.'}</small>
+                                </div>
+                            `).join('') : '<small>No prescription medicines available</small>'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card ai-insights">
+                    <h2>🧠 AI Health Insights</h2>
+                    <div class="insight-section">
+                        <div class="insight-title">📖 Disease Explanation</div>
+                        <div class="insight-content">${result.ai_insights.disease_explanation}</div>
+                    </div>
+                    <div class="insight-section">
+                        <div class="insight-title">🛡️ Precautions & Prevention</div>
+                        <ul class="precaution-list">
+                            ${result.ai_insights.precautions.map(p => `<li>${p}</li>`).join('')}
+                        </ul>
+                    </div>
+                    <div class="insight-section">
+                        <div class="insight-title">🥗 Diet Recommendations</div>
+                        <ul class="diet-list">
+                            ${result.ai_insights.diet_recommendations.map(d => `<li>${d}</li>`).join('')}
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>📋 Input Transparency</h2>
+                    <div class="info-box">
+                        <strong>Symptoms Analyzed:</strong> ${result.input_transparency.symptoms_selected.join(', ')}<br>
+                        <strong>Total Symptoms:</strong> ${result.input_transparency.symptom_count}<br>
+                        <strong>Timestamp:</strong> ${new Date(result.input_transparency.timestamp).toLocaleString()}
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>⚠️ Next Steps</h2>
+                    <div class="alert info">
+                        ${result.next_steps}
+                    </div>
+                </div>
+
+                <button onclick="window.print()" class="btn-primary" style="width: 100%; margin-top: 20px;">🖨️ Print Report</button>
+            `;
+
+            window.scrollTo(0, 0);
+        }
+
+        async function submitFeedback() {
+            const actualDisease = document.getElementById('actualDisease').value;
+            const rating = document.getElementById('rating').value;
+
+            if (!actualDisease) {
+                alert('Please enter the actual disease');
+                return;
+            }
+
+            try {
+                const response = await fetch('/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symptoms: selectedSymptoms.map(s => s.name),
+                        predicted_disease: document.querySelector('.prediction-result h3')?.textContent || 'Unknown',
+                        actual_disease: actualDisease,
+                        confidence: 0,
+                        was_correct: true,
+                        rating: parseInt(rating),
+                        model_name: 'ensemble'
+                    })
+                });
+
+                if (response.ok) {
+                    alert('✓ Thank you! Your feedback helps us improve.');
+                    document.getElementById('actualDisease').value = '';
+                } else {
+                    alert('Error submitting feedback');
+                }
+            } catch (error) {
+                console.error('Feedback error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+{
+  "timestamp": "2026-04-30T22:20:56.730110",
+  "models": {
+    "naive_bayes": {
+      "name": "Naive Bayes",
+      "accuracy": 93.0,
+      "precision": 89.83333333333334,
+      "recall": 93.0,
+      "f1_score": 90.83333333333334,
+      "cv_mean": 93.0,
+      "cv_std": 0.0
+    },
+    "random_forest": {
+      "name": "Random Forest",
+      "accuracy": 93.0,
+      "precision": 89.83333333333333,
+      "recall": 93.0,
+      "f1_score": 90.83333333333334,
+      "cv_mean": 93.0,
+      "cv_std": 0.0
+    },
+    "gradient_boosting": {
+      "name": "Gradient Boosting",
+      "accuracy": 93.0,
+      "precision": 89.83333333333333,
+      "recall": 93.0,
+      "f1_score": 90.83333333333334,
+      "cv_mean": 93.0,
+      "cv_std": 0.0
+    },
+    "svm": {
+      "name": "Svm",
+      "accuracy": 93.0,
+      "precision": 89.83333333333334,
+      "recall": 93.0,
+      "f1_score": 90.83333333333334,
+      "cv_mean": 93.0,
+      "cv_std": 0.0
+    },
+    "logistic_regression": {
+      "name": "Logistic Regression",
+      "accuracy": 93.0,
+      "precision": 89.83333333333334,
+      "recall": 93.0,
+      "f1_score": 90.83333333333334,
+      "cv_mean": 93.0,
+      "cv_std": 0.0
+    }
+  },
+  "comparison": {
+    "best_model": "Naive Bayes",
+    "best_f1_score": 90.83333333333334
+  }
+}
