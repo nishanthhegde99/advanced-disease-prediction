@@ -16,8 +16,9 @@ Extracts: Accuracy, Precision, Recall, F1-Score
 
 import sqlite3
 import pickle
+import os
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier, HistGradientBoostingClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
@@ -32,6 +33,7 @@ from datetime import datetime
 DATABASE = "disease.db"
 MODEL_FILE = "disease_model.pkl"
 METRICS_FILE = "model_metrics.json"
+os.environ.setdefault("LOKY_MAX_CPU_COUNT", "8")
 
 # ============================================================================
 # DATA LOADING
@@ -61,10 +63,25 @@ def load_training_data():
         cur.execute("SELECT symptom_id FROM disease_symptom WHERE disease_id=?", (disease_id,))
         disease_symptoms = [row[0] for row in cur.fetchall()]
         
-        # Create binary feature vector
-        features = [1 if sid in disease_symptoms else 0 for sid in symptom_ids]
-        for _ in range(10):  # Duplicate 10 times to allow train_test_split
-            X.append(features)
+        # Create full and partial symptom vectors. Patients rarely report every
+        # mapped symptom, so training on subsets improves real form inputs.
+        disease_symptom_set = set(disease_symptoms)
+        features = [1 if sid in disease_symptom_set else 0 for sid in symptom_ids]
+        X.append(features)
+        y.append(disease_id)
+
+        rng = np.random.default_rng(disease_id)
+        for _ in range(10):
+            if len(disease_symptoms) <= 3:
+                sample_size = len(disease_symptoms)
+            else:
+                sample_size = int(rng.integers(
+                    max(3, int(len(disease_symptoms) * 0.55)),
+                    len(disease_symptoms) + 1
+                ))
+            selected = set(rng.choice(disease_symptoms, size=sample_size, replace=False))
+            subset_features = [1 if sid in selected else 0 for sid in symptom_ids]
+            X.append(subset_features)
             y.append(disease_id)
     
     conn.close()
@@ -99,7 +116,7 @@ def train_models(X, y):
     nb_recall = recall_score(y_test, nb_pred, average='weighted', zero_division=0) * 100
     nb_f1 = f1_score(y_test, nb_pred, average='weighted', zero_division=0) * 100
     
-    nb_cv_scores = cross_val_score(nb_model, X, y, cv=5, scoring='accuracy')
+    nb_cv_scores = cross_val_score(nb_model, X, y, cv=3, scoring='accuracy')
     
     models_info['naive_bayes'] = {
         'model': nb_model,
@@ -120,8 +137,8 @@ def train_models(X, y):
     # ====== 2. RANDOM FOREST ======
     print("2️⃣  Training Random Forest Classifier...")
     rf_model = RandomForestClassifier(
-        n_estimators=200,
-        max_depth=20,
+        n_estimators=120,
+        max_depth=18,
         random_state=42,
         n_jobs=-1,
         min_samples_split=5,
@@ -135,7 +152,7 @@ def train_models(X, y):
     rf_recall = recall_score(y_test, rf_pred, average='weighted', zero_division=0) * 100
     rf_f1 = f1_score(y_test, rf_pred, average='weighted', zero_division=0) * 100
     
-    rf_cv_scores = cross_val_score(rf_model, X, y, cv=5, scoring='accuracy')
+    rf_cv_scores = cross_val_score(rf_model, X, y, cv=3, scoring='accuracy')
     
     models_info['random_forest'] = {
         'model': rf_model,
@@ -155,12 +172,12 @@ def train_models(X, y):
     
     # ====== 3. GRADIENT BOOSTING ======
     print("3️⃣  Training Gradient Boosting Classifier...")
-    gb_model = GradientBoostingClassifier(
-        n_estimators=150,
-        learning_rate=0.1,
-        max_depth=7,
+    gb_model = HistGradientBoostingClassifier(
+        max_iter=120,
+        learning_rate=0.08,
+        max_leaf_nodes=31,
         random_state=42,
-        subsample=0.8
+        l2_regularization=0.01
     )
     gb_model.fit(X_train, y_train)
     
@@ -170,7 +187,7 @@ def train_models(X, y):
     gb_recall = recall_score(y_test, gb_pred, average='weighted', zero_division=0) * 100
     gb_f1 = f1_score(y_test, gb_pred, average='weighted', zero_division=0) * 100
     
-    gb_cv_scores = cross_val_score(gb_model, X, y, cv=5, scoring='accuracy')
+    gb_cv_scores = cross_val_score(gb_model, X, y, cv=3, scoring='accuracy')
     
     models_info['gradient_boosting'] = {
         'model': gb_model,
@@ -205,7 +222,7 @@ def train_models(X, y):
     svm_recall = recall_score(y_test, svm_pred, average='weighted', zero_division=0) * 100
     svm_f1 = f1_score(y_test, svm_pred, average='weighted', zero_division=0) * 100
     
-    svm_cv_scores = cross_val_score(svm_model, X, y, cv=5, scoring='accuracy')
+    svm_cv_scores = cross_val_score(svm_model, X, y, cv=3, scoring='accuracy')
     
     models_info['svm'] = {
         'model': svm_model,
@@ -228,8 +245,7 @@ def train_models(X, y):
     lr_model = LogisticRegression(
         max_iter=1000,
         random_state=42,
-        solver='lbfgs',
-        multi_class='multinomial'
+        solver='lbfgs'
     )
     lr_model.fit(X_train, y_train)
     
@@ -239,7 +255,7 @@ def train_models(X, y):
     lr_recall = recall_score(y_test, lr_pred, average='weighted', zero_division=0) * 100
     lr_f1 = f1_score(y_test, lr_pred, average='weighted', zero_division=0) * 100
     
-    lr_cv_scores = cross_val_score(lr_model, X, y, cv=5, scoring='accuracy')
+    lr_cv_scores = cross_val_score(lr_model, X, y, cv=3, scoring='accuracy')
     
     models_info['logistic_regression'] = {
         'model': lr_model,

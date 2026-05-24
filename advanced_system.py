@@ -33,6 +33,8 @@ from dotenv import load_dotenv
 import logging
 import uuid
 
+os.environ.setdefault("LOKY_MAX_CPU_COUNT", "8")
+
 # Import temporal analyzer module
 from temporal_analyzer import TemporalSymptomAnalyzer
 # Import hybrid engine (HOSPITAL-GRADE UNIFIED PREDICTION)
@@ -459,6 +461,43 @@ def get_medicine_recommendations(cur, disease_id):
 
     return medicines, otc_medicines, prescription_medicines
 
+def get_clinical_symptom_matches(cur, selected_symptom_ids):
+    """Rank diseases by direct symptom overlap for partial patient inputs."""
+    selected_set = {int(sid) for sid in selected_symptom_ids}
+    if not selected_set:
+        return []
+
+    cur.execute("""
+        SELECT d.id, d.name, ds.symptom_id
+        FROM disease d
+        JOIN disease_symptom ds ON d.id = ds.disease_id
+    """)
+
+    disease_symptoms = {}
+    for disease_id, disease_name, symptom_id in cur.fetchall():
+        disease_symptoms.setdefault((disease_id, disease_name), set()).add(symptom_id)
+
+    matches = []
+    for (disease_id, disease_name), symptom_ids_for_disease in disease_symptoms.items():
+        overlap = selected_set & symptom_ids_for_disease
+        if not overlap:
+            continue
+
+        selected_coverage = len(overlap) / len(selected_set)
+        disease_coverage = len(overlap) / len(symptom_ids_for_disease)
+        score = (selected_coverage * 0.7) + (disease_coverage * 0.3)
+
+        matches.append({
+            "id": disease_id,
+            "disease": disease_name,
+            "overlap_count": len(overlap),
+            "selected_coverage": round(selected_coverage, 3),
+            "disease_coverage": round(disease_coverage, 3),
+            "score": round(score * 100, 2),
+        })
+
+    return sorted(matches, key=lambda item: (item["score"], item["overlap_count"]), reverse=True)
+
 @app.route("/predict", methods=["POST"])
 def predict():
     """Advanced prediction with multi-model consensus"""
@@ -563,6 +602,25 @@ def predict():
         "ml_votes": consensus["votes"],
         "from_ml_consensus": True
     }
+
+    clinical_matches = get_clinical_symptom_matches(cur, selected_symptoms)
+    best_clinical_match = clinical_matches[0] if clinical_matches else None
+    prediction_source = "ML Consensus Only"
+
+    if (
+        best_clinical_match
+        and best_clinical_match["overlap_count"] >= 3
+        and best_clinical_match["selected_coverage"] >= 0.75
+        and best_clinical_match["score"] >= top_disease["confidence"]
+    ):
+        top_disease = {
+            "name": best_clinical_match["disease"],
+            "confidence": min(98, best_clinical_match["score"]),
+            "id": best_clinical_match["id"],
+            "ml_votes": consensus["votes"],
+            "from_ml_consensus": False
+        }
+        prediction_source = "Clinical Symptom Match + ML Review"
     
     # ====== SEVERITY ASSESSMENT & CONFIDENCE CHECK ======
     if top_disease["confidence"] < 15:
@@ -636,7 +694,7 @@ def predict():
         best_current_model = max(model_details, key=lambda x: (x['accuracy'], x['confidence']))
 
     # ====== HYBRID UNIFIED PREDICTION (HOSPITAL-GRADE) ======
-    if hybrid_engine:
+    if hybrid_engine and prediction_source == "ML Consensus Only":
         unified_result = hybrid_engine.unified_prediction(ml_predictions, None, symptom_names)
         clinical_recommendations = hybrid_engine.get_clinical_recommendations(unified_result)
 
@@ -650,6 +708,7 @@ def predict():
             "urgency": unified_result['urgency'],
             "explanation": unified_result['explanation']
         }
+        prediction_source = unified_result['method']
 
         # Update severity based on unified urgency
         if unified_result['urgency'] == "Critical":
@@ -716,8 +775,9 @@ def predict():
             "is_critical": is_critical,
             "severity": severity,
             "health_score": health_score,
-            "source": "ML Consensus Only"
+            "source": prediction_source
         },
+        "clinical_symptom_matches": clinical_matches[:5],
         "medicines": {
             "all": medicines,
             "otc": otc_medicines,
