@@ -330,8 +330,8 @@
         </div>
 
         <div class="disclaimer">
-            ⚠️ <strong>MEDICAL DISCLAIMER:</strong> This system is for educational purposes only. NOT a replacement for
-            professional medical advice. Always consult healthcare providers. In emergencies, call 911.
+            <strong>Educational use only.</strong> Results are possible matches for learning — not a diagnosis.
+            Always talk to a qualified clinician about real health concerns.
         </div>
 
         <footer>
@@ -552,8 +552,7 @@
                     </div>
                     <div style="margin-top: 20px;">
                         <p><strong>Time Span:</strong> ${temporal.temporal_analysis.time_span}</p>
-                        <p><strong>Urgency Level:</strong> <span style="color: ${temporal.urgency_assessment.urgency_level === 'Critical' ? 'red' : temporal.urgency_assessment.urgency_level === 'High' ? 'orange' : 'green'}; font-weight: bold;">${temporal.urgency_assessment.urgency_level}</span></p>
-                        <p><strong>Message:</strong> ${temporal.urgency_assessment.message}</p>
+                        <p><strong>Care suggestion:</strong> <span style="color: #555; font-weight: normal;">${temporal.urgency_assessment.message}</span></p>
                     </div>
                 </div>
             ` : '';
@@ -628,13 +627,39 @@
                 </div>
             `;
 
-            document.getElementById('resultsContent').innerHTML = `
-                <div class="prediction-box">
-                    <div class="disease-name">${top.disease}</div>
-                    <div style="font-size: 20px;">Confidence: ${top.confidence}%</div>
-                    <div style="font-size: 14px; margin-top: 10px; opacity: 0.9;">${top.source}</div>
-                    ${temporal && temporal.ml_consistent ? '<div class="temporal-badge">✅ ML + Temporal Consensus</div>' : ''}
+            const qualifier = top.qualifier || 'possible match';
+            const confColor = top.confidence >= 70 ? 'var(--success)' : top.confidence >= 50 ? 'var(--warning)' : '#666';
+            const alternatesHTML = (result.alternate_matches && result.alternate_matches.length > 0) ? `
+                <div class="card" style="background: #f8f9fa;">
+                    <h2>Other possible matches</h2>
+                    <p style="color: #666; font-size: 14px; margin-bottom: 12px;">The system also considered these (for reference only):</p>
+                    ${result.alternate_matches.map(a => `
+                        <div style="padding: 10px; border-bottom: 1px solid #eee;">
+                            ${a.disease} <span style="color: #888;">(~${a.score}% symptom overlap)</span>
+                        </div>
+                    `).join('')}
                 </div>
+            ` : '';
+
+            const alertHTML = result.alert ? `
+                <div style="background: #fff8e6; border: 1px solid #f0c36d; color: #6b5a1e; padding: 14px; border-radius: 8px; margin-bottom: 16px; font-size: 14px;">
+                    ${result.alert}
+                </div>
+            ` : '';
+
+            document.getElementById('resultsContent').innerHTML = `
+                <div style="background: #e8f4fd; border: 1px solid #b8daff; color: #0c5460; padding: 14px; border-radius: 8px; margin-bottom: 16px; font-size: 14px;">
+                    ${result.medical_disclaimer}
+                </div>
+                ${alertHTML}
+                <div class="prediction-box" style="background: linear-gradient(135deg, #5a7d9a 0%, #4a6fa5 100%);">
+                    <div style="font-size: 14px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">${qualifier}</div>
+                    <div class="disease-name">${top.disease}</div>
+                    <div style="font-size: 18px;">Match strength: <span style="color: ${confColor};">${top.confidence}%</span></div>
+                    <div style="font-size: 13px; margin-top: 8px; opacity: 0.85;">${top.ml_agreement || ''} · ${top.source || ''}</div>
+                    <div style="font-size: 13px; margin-top: 12px; opacity: 0.9;">${result.next_steps || ''}</div>
+                </div>
+                ${alternatesHTML}
 
                 ${temporalHTML}
 

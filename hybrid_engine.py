@@ -54,8 +54,10 @@ class HybridPredictionEngine:
                 'disease': ml_disease,
                 'confidence': ml_confidence,
                 'method': 'ML Ensemble Only',
-                'urgency': self._assess_basic_urgency(ml_disease, len(symptom_names)),
-                'reliability': 'High' if ml_confidence >= 80 else 'Medium',
+                'urgency': self._assess_basic_urgency(
+                    ml_disease, len(symptom_names), ml_confidence, ml_votes
+                ),
+                'reliability': 'High' if ml_confidence >= 80 and ml_votes >= 4 else 'Medium',
                 'explanation': f'Prediction based on {ml_votes} out of 5 ML models agreeing'
             }
         
@@ -69,7 +71,7 @@ class HybridPredictionEngine:
         
         # Case A: ML and Temporal AGREE (Best case - highest confidence)
         if ml_disease.lower() == temporal_disease.lower():
-            final_confidence = min(98, (ml_confidence * 0.6 + temporal_confidence * 0.4) + 10)
+            final_confidence = min(85, (ml_confidence * 0.6 + temporal_confidence * 0.4) + 5)
             return {
                 'disease': ml_disease,
                 'confidence': round(final_confidence, 1),
@@ -153,21 +155,23 @@ class HybridPredictionEngine:
         
         return top_disease, confidence, votes
     
-    def _assess_basic_urgency(self, disease_name, symptom_count):
-        """Basic urgency assessment without temporal data"""
+    def _assess_basic_urgency(self, disease_name, symptom_count, confidence=0, ml_votes=0):
+        """Conservative urgency — avoid alarming users on weak or split predictions."""
         critical_diseases = [
             "Heart Attack", "Stroke", "Meningitis", "Bacterial Meningitis",
             "Sepsis", "Anaphylaxis", "Severe Pneumonia", "Appendicitis"
         ]
-        
-        if disease_name in critical_diseases:
-            return "Critical"
-        elif symptom_count >= 5:
+
+        # Only escalate when models strongly agree on a serious condition
+        if disease_name in critical_diseases and confidence >= 75 and ml_votes >= 4:
             return "High"
-        elif symptom_count >= 3:
-            return "Medium"
-        else:
+        if confidence < 50 or ml_votes <= 2:
             return "Low"
+        if symptom_count >= 6 and confidence >= 60:
+            return "Medium"
+        if symptom_count >= 4 and confidence >= 55:
+            return "Medium"
+        return "Low"
     
     def get_clinical_recommendations(self, unified_result):
         """
@@ -186,35 +190,32 @@ class HybridPredictionEngine:
         
         # Generate recommendations based on urgency
         if urgency == "Critical":
-            action = "🚨 IMMEDIATE EMERGENCY CARE REQUIRED"
-            timeline = "Call 911 or go to ER immediately"
+            action = "Seek emergency care if you have severe or worsening symptoms"
+            timeline = "Contact emergency services or go to ER if symptoms are severe"
             tests = self._get_emergency_tests(disease)
             color = "red"
         elif urgency == "High":
-            action = "⚠️ URGENT MEDICAL ATTENTION NEEDED"
-            timeline = "See doctor within 24 hours"
+            action = "Consider seeing a clinician soon"
+            timeline = "Book an appointment within 24–48 hours if symptoms persist"
             tests = self._get_urgent_tests(disease)
             color = "orange"
         elif urgency == "Medium":
-            action = "📋 SCHEDULE DOCTOR APPOINTMENT"
-            timeline = "See doctor within 2-3 days"
+            action = "Routine medical review may be helpful"
+            timeline = "See a doctor in the next few days if symptoms continue"
             tests = self._get_routine_tests(disease)
             color = "yellow"
         else:
-            action = "✓ MONITOR SYMPTOMS"
-            timeline = "Self-care at home, see doctor if worsens"
+            action = "Monitor at home"
+            timeline = "Rest, stay hydrated, and see a doctor if symptoms worsen"
             tests = ["Monitor symptoms", "Rest and hydration"]
             color = "green"
-        
-        # Confidence-based notes
-        if confidence >= 90:
-            confidence_note = "Very high diagnostic confidence"
-        elif confidence >= 75:
-            confidence_note = "High diagnostic confidence"
-        elif confidence >= 60:
-            confidence_note = "Moderate confidence - consider differential diagnosis"
+
+        if confidence >= 75 and reliability in ("High", "Very High"):
+            confidence_note = "Reasonable match for the symptoms entered"
+        elif confidence >= 55:
+            confidence_note = "Possible match — not a confirmed diagnosis"
         else:
-            confidence_note = "Low confidence - further evaluation needed"
+            confidence_note = "Uncertain match — more symptoms or a clinician review recommended"
         
         return {
             'action': action,

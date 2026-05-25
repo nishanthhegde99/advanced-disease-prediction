@@ -185,18 +185,15 @@ class TemporalSymptomAnalyzer:
             urgency_info: Dictionary with urgency level and recommendations
         """
         # Velocity-based urgency
-        if velocity > 0.3:
-            velocity_urgency = "Critical"
-            velocity_message = "🚨 RAPID SYMPTOM PROGRESSION - SEEK IMMEDIATE MEDICAL ATTENTION"
-        elif velocity > 0.1:
+        if velocity > 0.5:
             velocity_urgency = "High"
-            velocity_message = "⚠️ Fast symptom progression - Medical evaluation recommended soon"
-        elif velocity > 0.05:
+            velocity_message = "Symptoms appeared relatively quickly — consider a clinician if you feel unwell"
+        elif velocity > 0.2:
             velocity_urgency = "Medium"
-            velocity_message = "⚠️ Moderate progression - Schedule doctor appointment"
+            velocity_message = "Moderate symptom progression — monitor and seek care if symptoms worsen"
         else:
             velocity_urgency = "Low"
-            velocity_message = "✓ Gradual onset - Monitor symptoms and consult if worsening"
+            velocity_message = "Gradual onset — monitor at home and consult a doctor if needed"
         
         # Pattern-based urgency
         pattern_urgency = "Low"
@@ -211,9 +208,9 @@ class TemporalSymptomAnalyzer:
             urgency_levels.get(pattern_urgency, 1)
         )
         
-        urgency_map = {1: "Low", 2: "Medium", 3: "High", 4: "Critical"}
+        urgency_map = {1: "Low", 2: "Medium", 3: "High", 4: "High"}
         final_urgency = urgency_map[final_urgency_value]
-        
+
         return {
             'urgency_level': final_urgency,
             'velocity_urgency': velocity_urgency,

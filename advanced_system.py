@@ -459,6 +459,59 @@ def get_medicine_recommendations(cur, disease_id):
 
     return medicines, otc_medicines, prescription_medicines
 
+
+def get_clinical_symptom_matches(cur, selected_symptom_ids):
+    """Rank diseases by direct symptom overlap for partial patient inputs."""
+    selected_set = {int(sid) for sid in selected_symptom_ids}
+    if not selected_set:
+        return []
+
+    cur.execute("""
+        SELECT d.id, d.name, ds.symptom_id
+        FROM disease d
+        JOIN disease_symptom ds ON d.id = ds.disease_id
+    """)
+
+    disease_symptoms = {}
+    for disease_id, disease_name, symptom_id in cur.fetchall():
+        disease_symptoms.setdefault((disease_id, disease_name), set()).add(symptom_id)
+
+    matches = []
+    for (disease_id, disease_name), symptom_ids_for_disease in disease_symptoms.items():
+        overlap = selected_set & symptom_ids_for_disease
+        if not overlap:
+            continue
+
+        selected_coverage = len(overlap) / len(selected_set)
+        disease_coverage = len(overlap) / len(symptom_ids_for_disease)
+        score = (selected_coverage * 0.7) + (disease_coverage * 0.3)
+
+        matches.append({
+            "id": disease_id,
+            "disease": disease_name,
+            "overlap_count": len(overlap),
+            "selected_coverage": round(selected_coverage, 3),
+            "disease_coverage": round(disease_coverage, 3),
+            "score": round(score * 100, 2),
+        })
+
+    return sorted(matches, key=lambda item: (item["score"], item["overlap_count"]), reverse=True)
+
+
+def _calibrated_confidence(consensus, model_details):
+    """Blend model agreement with average probability — avoids false 80–100% scores."""
+    if not model_details or not consensus.get("disease"):
+        return 0
+
+    agreeing = [m["confidence"] for m in model_details if m["predicted_disease"] == consensus["disease"]]
+    if not agreeing:
+        return 0
+
+    avg_proba = sum(agreeing) / len(agreeing)
+    vote_ratio = consensus["votes"] / max(consensus["total_models"], 1)
+    return int(min(avg_proba, vote_ratio * 100))
+
+
 @app.route("/predict", methods=["POST"])
 def predict():
     """Advanced prediction with multi-model consensus"""
@@ -555,21 +608,43 @@ def predict():
     
     disease_id = disease_row[0]
     
-    # Set final prediction directly from ML consensus
+    display_confidence = _calibrated_confidence(consensus, model_details)
     top_disease = {
         "name": consensus["disease"],
-        "confidence": consensus["votes"] * 20,  # Each model vote = 20% (5 models = 100% max)
+        "confidence": display_confidence,
         "id": disease_id,
         "ml_votes": consensus["votes"],
         "from_ml_consensus": True
     }
+
+    clinical_matches = get_clinical_symptom_matches(cur, selected_symptoms)
+    best_clinical_match = clinical_matches[0] if clinical_matches else None
+    prediction_source = "ML screening estimate"
+    prediction_qualifier = "possible match"
+
+    if (
+        best_clinical_match
+        and best_clinical_match["overlap_count"] >= 2
+        and best_clinical_match["selected_coverage"] >= 0.6
+        and best_clinical_match["score"] >= display_confidence
+    ):
+        top_disease = {
+            "name": best_clinical_match["disease"],
+            "confidence": min(80, int(best_clinical_match["score"])),
+            "id": best_clinical_match["id"],
+            "ml_votes": consensus["votes"],
+            "from_ml_consensus": False
+        }
+        prediction_source = "Symptom pattern match (educational)"
+        if best_clinical_match["score"] >= 65 and best_clinical_match["overlap_count"] >= 3:
+            prediction_qualifier = "likely match"
     
     # ====== SEVERITY ASSESSMENT & CONFIDENCE CHECK ======
-    if top_disease["confidence"] < 15:
+    if top_disease["confidence"] < 20:
         db.close()
         return jsonify({
             "status": "unknown_case",
-            "message": "No clear prediction – insufficient data. Please provide more symptoms.",
+            "message": "We could not find a clear match. Try adding more symptoms — this tool is only for learning, not diagnosis.",
             "symptoms_selected": symptom_names
         })
     
@@ -624,7 +699,7 @@ def predict():
             xai_trust_reason = f"Clinical validation passed: {top_contributor} is a primary indicator for {top_disease['name']}."
         else:
             xai_trust_level = "Low"
-            xai_trust_reason = f"Warning: {top_contributor} heavily influenced prediction but is not a typical primary symptom."
+            xai_trust_reason = f"{top_contributor} influenced this estimate but is not a typical primary symptom for {top_disease['name']}."
 
     # ====== HEALTH SCORE ======
     health_score = max(100 - (len(selected_symptoms) * 12), 20)
@@ -635,46 +710,51 @@ def predict():
         # Find model with highest accuracy and confidence
         best_current_model = max(model_details, key=lambda x: (x['accuracy'], x['confidence']))
 
-    # ====== HYBRID UNIFIED PREDICTION (HOSPITAL-GRADE) ======
+    # ====== HYBRID UNIFIED PREDICTION ======
+    red_flag = False
     if hybrid_engine:
         unified_result = hybrid_engine.unified_prediction(ml_predictions, None, symptom_names)
         clinical_recommendations = hybrid_engine.get_clinical_recommendations(unified_result)
 
-        # Update top_disease with unified prediction
+        ml_votes = top_disease.get("ml_votes", consensus["votes"])
+        hybrid_confidence = min(unified_result['confidence'], top_disease['confidence'])
         top_disease = {
-            "name": unified_result['disease'],
-            "confidence": unified_result['confidence'],
-            "id": disease_id,
+            "name": top_disease['name'],
+            "confidence": hybrid_confidence,
+            "id": top_disease['id'],
+            "ml_votes": ml_votes,
             "method": unified_result['method'],
             "reliability": unified_result['reliability'],
             "urgency": unified_result['urgency'],
             "explanation": unified_result['explanation']
         }
 
-        # Update severity based on unified urgency
-        if unified_result['urgency'] == "Critical":
-            severity = "Critical"
-            advice = "🚨 IMMEDIATE EMERGENCY CARE REQUIRED"
-            red_flag = True
-        elif unified_result['urgency'] == "High":
+        if hybrid_confidence >= 70 and ml_votes >= 4:
+            prediction_qualifier = "likely match"
+        elif hybrid_confidence >= 50:
+            prediction_qualifier = "possible match"
+        else:
+            prediction_qualifier = "uncertain — for learning only"
+
+        urgency = unified_result['urgency']
+        if urgency == "High" and hybrid_confidence >= 70:
             severity = "High"
-            advice = "⚠️ URGENT MEDICAL ATTENTION NEEDED"
+            advice = "If symptoms are severe or worsening, contact a clinician or emergency services."
             red_flag = True
-        elif unified_result['urgency'] == "Medium":
+        elif urgency == "Medium":
             severity = "Medium"
-            advice = "📋 Schedule doctor appointment within 2-3 days"
+            advice = "Consider a routine doctor visit if symptoms continue."
             red_flag = False
         else:
             severity = "Low"
-            advice = "✓ Monitor symptoms at home"
+            advice = "Monitor at home. See a doctor if symptoms worsen."
             red_flag = False
-        
+
         logger.info(f"✅ UNIFIED PREDICTION: {top_disease['name']} ({top_disease['confidence']}%) - {unified_result['method']}")
     else:
-        # Fallback to old method if hybrid engine not available
         clinical_recommendations = None
-        severity = "Medium"
-        advice = "⚠️ Consult a doctor for professional diagnosis"
+        severity = "Low"
+        advice = "This is an educational estimate only — consult a doctor for real diagnosis."
         red_flag = False
 
     # Ensure all downstream care guidance is tied to the final displayed disease.
@@ -713,11 +793,18 @@ def predict():
             "disease": top_disease["name"],
             "confidence": top_disease["confidence"],
             "id": top_disease["id"],
-            "is_critical": is_critical,
+            "is_critical": is_critical and top_disease["confidence"] >= 70,
             "severity": severity,
             "health_score": health_score,
-            "source": "ML Consensus Only"
+            "source": prediction_source,
+            "qualifier": prediction_qualifier,
+            "ml_agreement": f"{consensus['votes']}/{consensus['total_models']} models"
         },
+        "alternate_matches": [
+            {"disease": m["disease"], "score": m["score"]}
+            for m in (clinical_matches[:3] if clinical_matches else [])
+            if m["disease"] != top_disease["name"]
+        ],
         "medicines": {
             "all": medicines,
             "otc": otc_medicines,
@@ -735,8 +822,8 @@ def predict():
             "trust_level": xai_trust_level,
             "reason": xai_trust_reason
         },
-        "medical_disclaimer": "⚠️ This system is for informational purposes only and NOT a replacement for professional medical advice. Always consult a qualified healthcare provider.",
-        "alert": "🚨 Immediate medical attention is recommended." if red_flag else None,
+        "medical_disclaimer": "Educational tool only — not a medical diagnosis. Do not make treatment decisions from this screen alone.",
+        "alert": "If you feel very unwell or symptoms are severe, contact a doctor or emergency services." if red_flag else None,
         "next_steps": advice
     }
     
