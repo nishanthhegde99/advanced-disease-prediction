@@ -376,18 +376,28 @@ except Exception as e:
 
 @app.route("/")
 def index():
-    """Home page with symptom selection"""
-    db = get_db()
-    cur = db.cursor()
-    cur.execute("SELECT id, name FROM symptom ORDER BY name")
-    symptoms = cur.fetchall()
-    db.close()
-    
-    return render_template("temporal_system.html", 
-                         symptoms=symptoms,
-                         ml_available=ml_model_loaded,
-                         temporal_available=temporal_enabled,
-                         best_model=best_model_name)
+    """Main disease prediction page"""
+    return render_template(
+        "index.html",
+        ml_available=ml_model_loaded,
+        best_model=best_model_name,
+    )
+
+
+@app.route("/temporal")
+def temporal_page():
+    """Temporal symptom progression analysis (separate page)"""
+    if not temporal_enabled:
+        return render_template(
+            "temporal_analysis.html",
+            temporal_available=False,
+            ml_available=ml_model_loaded,
+        )
+    return render_template(
+        "temporal_analysis.html",
+        temporal_available=True,
+        ml_available=ml_model_loaded,
+    )
 
 @app.route("/api/get-all-data")
 def get_all_data():
@@ -514,12 +524,30 @@ def _calibrated_confidence(consensus, model_details):
 
 @app.route("/predict", methods=["POST"])
 def predict():
+    """Standard ML prediction (no temporal timeline)"""
+    return _run_prediction(use_temporal=False)
+
+
+@app.route("/predict/temporal", methods=["POST"])
+def predict_temporal():
+    """Prediction with temporal symptom progression analysis"""
+    if not temporal_enabled:
+        return jsonify({
+            "status": "error",
+            "message": "Temporal analysis is not available on this server.",
+        }), 503
+    if not request.form.get("symptom_timeline"):
+        return jsonify({
+            "status": "error",
+            "message": "Please set when each symptom started (timeline required).",
+        }), 400
+    return _run_prediction(use_temporal=True)
+
+
+def _run_prediction(use_temporal=False):
     """Advanced prediction with multi-model consensus"""
     selected_symptoms = request.form.getlist("symptom")
-    
-    # Get temporal data if provided
-    symptom_timeline_data = request.form.get("symptom_timeline")
-    use_temporal = symptom_timeline_data and temporal_enabled
+    symptom_timeline_data = request.form.get("symptom_timeline") if use_temporal else None
     
     if not selected_symptoms or len(selected_symptoms) == 0:
         return jsonify({
@@ -710,16 +738,37 @@ def predict():
         # Find model with highest accuracy and confidence
         best_current_model = max(model_details, key=lambda x: (x['accuracy'], x['confidence']))
 
+    # ====== TEMPORAL ANALYSIS (separate /temporal page only) ======
+    temporal_result = None
+    if use_temporal and temporal_enabled:
+        try:
+            timeline = json.loads(symptom_timeline_data)
+            if not timeline:
+                db.close()
+                return jsonify({
+                    "status": "error",
+                    "message": "Timeline must include at least one symptom with start time.",
+                }), 400
+            temporal_result = temporal_analyzer.analyze(
+                timeline,
+                ml_predicted_disease=consensus["disease"],
+            )
+        except json.JSONDecodeError:
+            db.close()
+            return jsonify({"status": "error", "message": "Invalid timeline data."}), 400
+
     # ====== HYBRID UNIFIED PREDICTION ======
     red_flag = False
     if hybrid_engine:
-        unified_result = hybrid_engine.unified_prediction(ml_predictions, None, symptom_names)
+        unified_result = hybrid_engine.unified_prediction(
+            ml_predictions, temporal_result, symptom_names
+        )
         clinical_recommendations = hybrid_engine.get_clinical_recommendations(unified_result)
 
         ml_votes = top_disease.get("ml_votes", consensus["votes"])
         hybrid_confidence = min(unified_result['confidence'], top_disease['confidence'])
         top_disease = {
-            "name": top_disease['name'],
+            "name": unified_result['disease'],
             "confidence": hybrid_confidence,
             "id": top_disease['id'],
             "ml_votes": ml_votes,
@@ -728,6 +777,8 @@ def predict():
             "urgency": unified_result['urgency'],
             "explanation": unified_result['explanation']
         }
+        if temporal_result and temporal_result.get("status") == "success":
+            prediction_source = unified_result['method']
 
         if hybrid_confidence >= 70 and ml_votes >= 4:
             prediction_qualifier = "likely match"
@@ -824,9 +875,14 @@ def predict():
         },
         "medical_disclaimer": "Educational tool only — not a medical diagnosis. Do not make treatment decisions from this screen alone.",
         "alert": "If you feel very unwell or symptoms are severe, contact a doctor or emergency services." if red_flag else None,
-        "next_steps": advice
+        "next_steps": advice,
+        "temporal_analysis": (
+            temporal_result
+            if temporal_result and temporal_result.get("status") == "success"
+            else None
+        ),
     }
-    
+
     db.close()
     
     # Record prediction for learning engine
