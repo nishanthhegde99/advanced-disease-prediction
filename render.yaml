@@ -1,0 +1,21 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Deploy: connect this GitHub repo at https://dashboard.render.com/select-repo
+services:
+  - type: web
+    name: disease-prediction
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn advanced_system:app --bind 0.0.0.0:$PORT --workers 1 --threads 2 --timeout 120 --preload
+    healthCheckPath: /health-check
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: FLASK_DEBUG
+        value: "False"
+      - key: DATABASE_PATH
+        value: disease.db
+      - key: MODEL_FILE
+        value: disease_model.pkl
+      - key: SECRET_KEY
+        generateValue: true

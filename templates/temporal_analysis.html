@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🕐 Temporal Analysis - Disease Prediction</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #1F4788;
+            --secondary: #0984e3;
+            --success: #27ae60;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+            --accent: #9b59b6;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            min-height: 100vh;
+            color: var(--dark);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            padding: 30px 0;
+            border-bottom: 3px solid var(--primary);
+            margin-bottom: 40px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .system-badge {
+            background: linear-gradient(135deg, var(--accent), #e74c3c);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .card h2 {
+            color: var(--primary);
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .temporal-toggle {
+            background: linear-gradient(135deg, var(--accent), #8e44ad);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 15px;
+            cursor: pointer;
+        }
+
+        .toggle-switch.active {
+            background: var(--success);
+        }
+
+        .toggle-slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        .toggle-switch.active .toggle-slider {
+            left: 33px;
+        }
+
+        .symptom-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .symptom-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: #f9f9f9;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .symptom-checkbox:hover {
+            border-color: var(--primary);
+            background: #f0f5ff;
+        }
+
+        .symptom-checkbox input {
+            width: auto;
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .temporal-input {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff3cd;
+            border-left: 4px solid var(--warning);
+            border-radius: 5px;
+        }
+
+        .temporal-input.show {
+            display: block;
+        }
+
+        .temporal-input label {
+            display: block;
+            font-size: 12px;
+            color: #856404;
+            margin-bottom: 5px;
+        }
+
+        .temporal-input select {
+            width: 100%;
+            padding: 5px;
+            border: 1px solid #ffc107;
+            border-radius: 5px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .btn-primary:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+        }
+
+        .results-section {
+            display: none;
+        }
+
+        .results-section.show {
+            display: block;
+        }
+
+        .prediction-box {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .disease-name {
+            font-size: 36px;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+
+        .temporal-badge {
+            background: var(--accent);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+
+        .models-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .model-card {
+            background: #f9f9f9;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .disclaimer {
+            background: var(--warning);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 13px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: white;
+            margin-top: 40px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .nav-links a.active {
+            color: var(--accent);
+            border-bottom: 2px solid var(--accent);
+            padding-bottom: 2px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <div class="logo">🕐 Temporal Analysis</div>
+            <nav class="nav-links">
+                <a href="/">Prediction</a>
+                <a href="/temporal" class="active">Temporal Analysis</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h2>🕐 Symptom timeline</h2>
+            <p style="color: #666; margin-bottom: 0;">Select symptoms and when each started. Analysis uses progression over time.</p>
+        </div>
+
+        <div class="card" id="symptomCard">
+            <h2>🔍 Select symptoms &amp; timing</h2>
+            <div style="margin-bottom: 20px;">
+                <input type="text" id="symptomSearch" placeholder="Search symptoms..."
+                    style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px;">
+            </div>
+            <div class="symptom-list" id="symptomList"></div>
+            <div id="selectedTags" style="margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px;"></div>
+            <button class="btn-primary" onclick="predictDisease()">🕐 Analyze with timeline</button>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-section" id="resultsSection">
+            <div id="resultsContent"></div>
+        </div>
+
+        <footer>
+            <p>🏥 Advanced AI Disease Prediction System | Powered by Machine Learning</p>
+            <p>© 2026 | Educational & Hospital Use</p>
+        </footer>
+    </div>
+
+    <script>
+        let allSymptoms = [];
+        let selectedSymptoms = [];
+        const temporalEnabled = {{ 'true' if temporal_available else 'false' }};
+        let symptomTimeline = {};
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (!temporalEnabled) {
+                document.getElementById('symptomCard').innerHTML =
+                    '<p style="color: var(--danger);">Temporal analysis is not available. Use the <a href="/">Prediction</a> page.</p>';
+                return;
+            }
+            loadSymptoms();
+            document.getElementById('symptomSearch').addEventListener('input', filterSymptoms);
+        });
+
+        async function loadSymptoms() {
+            try {
+                const response = await fetch('/api/get-all-data');
+                const data = await response.json();
+                allSymptoms = data.symptoms || [];
+                displaySymptoms(allSymptoms);
+            } catch (error) {
+                console.error('Error loading symptoms:', error);
+                alert('Error loading symptoms');
+            }
+        }
+
+        function displaySymptoms(symptoms) {
+            const list = document.getElementById('symptomList');
+            list.innerHTML = '';
+
+            symptoms.forEach(symptom => {
+                const container = document.createElement('div');
+                
+                const label = document.createElement('label');
+                label.className = 'symptom-checkbox';
+                label.innerHTML = `
+                    <input type="checkbox" value="${symptom.id}" onchange="updateSelectedSymptoms()">
+                    <span>${symptom.name}</span>
+                `;
+                
+                const temporalInput = document.createElement('div');
+                temporalInput.className = 'temporal-input';
+                temporalInput.id = `temporal-${symptom.id}`;
+                temporalInput.innerHTML = `
+                    <label>When did this symptom start?</label>
+                    <select onchange="updateTimeline(${symptom.id}, this.value)">
+                        <option value="1">1 hour ago</option>
+                        <option value="3">3 hours ago</option>
+                        <option value="6">6 hours ago</option>
+                        <option value="12">12 hours ago</option>
+                        <option value="24" selected>1 day ago</option>
+                        <option value="48">2 days ago</option>
+                        <option value="72">3 days ago</option>
+                        <option value="96">4 days ago</option>
+                        <option value="120">5 days ago</option>
+                        <option value="168">1 week ago</option>
+                    </select>
+                `;
+                
+                container.appendChild(label);
+                container.appendChild(temporalInput);
+                list.appendChild(container);
+            });
+        }
+
+        function updateTimeline(symptomId, hoursAgo) {
+            const symptom = allSymptoms.find(s => s.id == symptomId);
+            if (symptom) {
+                symptomTimeline[symptomId] = {
+                    symptom: symptom.name,
+                    symptom_id: symptomId,
+                    started_hours_ago: parseFloat(hoursAgo)
+                };
+            }
+        }
+
+        function filterSymptoms() {
+            const search = document.getElementById('symptomSearch').value.toLowerCase();
+            const filtered = allSymptoms.filter(s => s.name.toLowerCase().includes(search));
+            displaySymptoms(filtered);
+        }
+
+        function updateSelectedSymptoms() {
+            const checked = document.querySelectorAll('#symptomList input:checked');
+            selectedSymptoms = [];
+
+            checked.forEach(input => {
+                const symptomName = input.nextElementSibling.textContent;
+                const symptomId = input.value;
+                selectedSymptoms.push({ id: symptomId, name: symptomName });
+                
+                const temporalInput = document.getElementById(`temporal-${symptomId}`);
+                if (temporalInput) {
+                    temporalInput.classList.add('show');
+                }
+                if (!symptomTimeline[symptomId]) {
+                    updateTimeline(symptomId, 24);
+                }
+            });
+
+            document.querySelectorAll('.temporal-input').forEach(input => {
+                const symptomId = input.id.replace('temporal-', '');
+                const isChecked = selectedSymptoms.some(s => s.id == symptomId);
+                if (!isChecked) {
+                    input.classList.remove('show');
+                    delete symptomTimeline[symptomId];
+                }
+            });
+
+            displaySelectedTags();
+        }
+
+        function displaySelectedTags() {
+            const container = document.getElementById('selectedTags');
+            container.innerHTML = '';
+
+            selectedSymptoms.forEach(symptom => {
+                const tag = document.createElement('div');
+                const timeInfo = temporalEnabled && symptomTimeline[symptom.id] 
+                    ? ` (${symptomTimeline[symptom.id].started_hours_ago}h ago)` 
+                    : '';
+                
+                tag.style.cssText = 'background: var(--secondary); color: white; padding: 8px 12px; border-radius: 20px; font-size: 14px; display: flex; align-items: center; gap: 8px;';
+                tag.innerHTML = `
+                    ${symptom.name}${timeInfo}
+                    <button style="background: none; border: none; color: white; cursor: pointer; font-size: 16px;" onclick="removeSymptom('${symptom.id}')">✕</button>
+                `;
+                container.appendChild(tag);
+            });
+        }
+
+        function removeSymptom(id) {
+            document.querySelector(`#symptomList input[value="${id}"]`).checked = false;
+            updateSelectedSymptoms();
+        }
+
+        async function predictDisease() {
+            if (selectedSymptoms.length === 0) {
+                alert('Please select at least one symptom');
+                return;
+            }
+
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsContent = document.getElementById('resultsContent');
+
+            if (!temporalEnabled) return;
+
+            const timelineArray = selectedSymptoms.map(s => symptomTimeline[s.id]).filter(Boolean);
+            if (timelineArray.length !== selectedSymptoms.length) {
+                alert('Please set when each selected symptom started.');
+                return;
+            }
+
+            resultsContent.innerHTML = '<div class="loading"><div class="spinner"></div>Analyzing symptom progression...</div>';
+            resultsSection.classList.add('show');
+
+            try {
+                const formData = new FormData();
+                selectedSymptoms.forEach(s => formData.append('symptom', s.id));
+                formData.append('symptom_timeline', JSON.stringify(timelineArray));
+
+                const response = await fetch('/predict/temporal', { method: 'POST', body: formData });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    displayResults(result);
+                } else {
+                    resultsContent.innerHTML = `<div class="alert" style="background: #fee; color: var(--danger);">${result.message || 'No matching diseases found.'}</div>`;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                resultsContent.innerHTML = '<div class="alert" style="background: #fee; color: var(--danger);">Error making prediction</div>';
+            }
+        }
+
+        function displayResults(result) {
+            const top = result.top_prediction;
+            const temporal = result.temporal_analysis;
+
+            const temporalHTML = temporal ? `
+                <div class="card" style="border-left: 4px solid var(--accent);">
+                    <h2>🕐 Temporal Analysis</h2>
+                    ${temporal.ml_consistent ? `
+                        <div style="background: #d4edda; border: 2px solid #28a745; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                            <strong style="color: #155724;">✅ CONSISTENCY VERIFIED</strong>
+                            <p style="color: #155724; margin-top: 5px;">ML and Temporal Analysis AGREE on diagnosis. High reliability prediction.</p>
+                        </div>
+                    ` : `
+                        <div style="background: #fff3cd; border: 2px solid #ffc107; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                            <strong style="color: #856404;">⚠️ TEMPORAL CONTEXT</strong>
+                            <p style="color: #856404; margin-top: 5px;">Temporal analysis provides urgency assessment. Primary diagnosis from ML models.</p>
+                        </div>
+                    `}
+                    <div class="temporal-badge">
+                        ⚡ Symptom Velocity: ${temporal.temporal_analysis.velocity.toFixed(4)} symptoms/hour
+                        (${temporal.temporal_analysis.velocity_description})
+                    </div>
+                    <div style="margin-top: 20px;">
+                        <p><strong>Time Span:</strong> ${temporal.temporal_analysis.time_span}</p>
+                        <p><strong>Care suggestion:</strong> <span style="color: #555; font-weight: normal;">${temporal.urgency_assessment.message}</span></p>
+                    </div>
+                </div>
+            ` : '';
+
+            const modelsHTML = result.ml_models.individual_predictions.map(m => `
+                <div class="model-card">
+                    <div style="font-weight: bold; color: var(--primary); margin-bottom: 10px;">${m.name}</div>
+                    <div style="font-size: 18px; color: var(--dark); margin-bottom: 8px;">${m.predicted_disease}</div>
+                    <div style="color: var(--secondary); font-weight: bold;">${m.confidence}% confidence</div>
+                </div>
+            `).join('');
+
+            const bestModelHTML = result.ml_models.best_current_model ? `
+                <div class="card" style="border-left: 4px solid #27ae60; background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);">
+                    <h2>🏆 Best Model for This Prediction</h2>
+                    <div style="background: white; padding: 20px; border-radius: 10px;">
+                        <div style="font-size: 24px; font-weight: bold; color: var(--success);">${result.ml_models.best_current_model.name}</div>
+                        <div style="font-size: 14px; color: #666; margin-top: 5px;">${result.ml_models.best_current_model.model}</div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 20px;">
+                            <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 20px; font-weight: bold; color: var(--primary);">${result.ml_models.best_current_model.predicted_disease}</div>
+                                <div style="font-size: 12px; color: #666; margin-top: 5px;">Predicted Disease</div>
+                            </div>
+                            <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 20px; font-weight: bold; color: var(--secondary);">${result.ml_models.best_current_model.confidence}%</div>
+                                <div style="font-size: 12px; color: #666; margin-top: 5px;">Confidence</div>
+                            </div>
+                            <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 20px; font-weight: bold; color: var(--success);">${result.ml_models.best_current_model.accuracy}%</div>
+                                <div style="font-size: 12px; color: #666; margin-top: 5px;">Accuracy</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            ` : '';
+
+            const medicineItem = (m, badgeStyle) => `
+                <div style="padding: 14px; border: 1px solid #ddd; border-radius: 8px; background: #f9f9f9; margin-bottom: 10px;">
+                    <div style="display: flex; justify-content: space-between; gap: 10px; align-items: flex-start;">
+                        <strong style="color: var(--dark);">${m.name}</strong>
+                        <span style="${badgeStyle}; color: white; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; white-space: nowrap;">
+                            ${m.label}
+                        </span>
+                    </div>
+                    <div style="color: #666; font-size: 13px; margin-top: 8px;">${m.warning || 'Follow clinician guidance.'}</div>
+                    <div style="color: ${m.requires_prescription ? '#c0392b' : '#27ae60'}; font-size: 12px; font-weight: bold; margin-top: 8px;">
+                        ${m.prescription_note}
+                    </div>
+                </div>
+            `;
+
+            const medicinesHTML = `
+                <div class="card">
+                    <h2>💊 Medicines for ${top.disease}</h2>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 20px;">
+                        <div>
+                            <h3 style="color: var(--success); margin-bottom: 12px; font-size: 18px;">Over-the-Counter</h3>
+                            ${result.medicines.otc.length > 0
+                                ? result.medicines.otc.map(m => medicineItem(m, 'background: #27ae60')).join('')
+                                : '<p style="color: #666;">No OTC medicines mapped for this disease.</p>'}
+                        </div>
+                        <div>
+                            <h3 style="color: var(--danger); margin-bottom: 12px; font-size: 18px;">Rx Required</h3>
+                            ${result.medicines.prescription.length > 0
+                                ? result.medicines.prescription.map(m => medicineItem(m, 'background: #c0392b')).join('')
+                                : '<p style="color: #666;">No prescription medicines mapped for this disease.</p>'}
+                        </div>
+                    </div>
+                    <div style="background: #fff3cd; color: #856404; padding: 12px; border-radius: 8px; margin-top: 15px; font-size: 13px;">
+                        Rx medicines require doctor approval. Do not start, stop, or combine medicines without professional medical guidance.
+                    </div>
+                </div>
+            `;
+
+            const qualifier = top.qualifier || 'possible match';
+            const confColor = top.confidence >= 70 ? 'var(--success)' : top.confidence >= 50 ? 'var(--warning)' : '#666';
+            const alternatesHTML = (result.alternate_matches && result.alternate_matches.length > 0) ? `
+                <div class="card" style="background: #f8f9fa;">
+                    <h2>Other possible matches</h2>
+                    <p style="color: #666; font-size: 14px; margin-bottom: 12px;">The system also considered these (for reference only):</p>
+                    ${result.alternate_matches.map(a => `
+                        <div style="padding: 10px; border-bottom: 1px solid #eee;">
+                            ${a.disease} <span style="color: #888;">(~${a.score}% symptom overlap)</span>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : '';
+
+            const alertHTML = result.alert ? `
+                <div style="background: #fff8e6; border: 1px solid #f0c36d; color: #6b5a1e; padding: 14px; border-radius: 8px; margin-bottom: 16px; font-size: 14px;">
+                    ${result.alert}
+                </div>
+            ` : '';
+
+            document.getElementById('resultsContent').innerHTML = `
+                ${alertHTML}
+                <div class="prediction-box" style="background: linear-gradient(135deg, #5a7d9a 0%, #4a6fa5 100%);">
+                    <div style="font-size: 14px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9;">${qualifier}</div>
+                    <div class="disease-name">${top.disease}</div>
+                    <div style="font-size: 18px;">Match strength: <span style="color: ${confColor};">${top.confidence}%</span></div>
+                </div>
+                ${alternatesHTML}
+
+                ${temporalHTML}
+
+                ${medicinesHTML}
+
+                <div class="card">
+                    <h2>📊 All ML Models</h2>
+                    <div class="models-grid">${modelsHTML}</div>
+                </div>
+
+                ${bestModelHTML}
+            `;
+        }
+    </script>
+</body>
+</html>
