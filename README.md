@@ -9,14 +9,6 @@ Flask-based AI disease prediction app with:
 - PDF report generation
 - medical safety disclaimer
 
-Current dataset size:
-
-- 140 diseases
-- 137 symptoms
-- 183 medicines
-- 700 disease-symptom links
-- 402 disease-medicine links
-
 ## Project Files
 
 ```text
@@ -24,7 +16,6 @@ advanced_system.py        Main Flask application
 hybrid_engine.py          Final prediction and urgency logic
 temporal_analyzer.py      Temporal symptom progression analysis
 database.py               Database table setup
-expand_medical_dataset.py Adds expanded diseases, symptoms, medicines, and Rx flags
 train_advanced_models.py  Model training script
 test_system.py            Temporal analysis smoke tests
 disease.db                SQLite disease/medicine database
@@ -62,13 +53,6 @@ python3 -c "from advanced_system import app; app.run(debug=False, host='127.0.0.
 
 ```bash
 python3 test_system.py
-```
-
-## Expand and Retrain Dataset
-
-```bash
-python3 expand_medical_dataset.py
-python3 train_advanced_models.py
 ```
 
 ## Important
